@@ -1,73 +1,23 @@
-" visincr.vim: assumes that a block of numbers selected by a ctrl-v
-"              (visual block) has been selected for incrementing.
-"              This function will transform that block of numbers
-"              into an incrementing column starting from that topmost number
-"              in the visual block.  Also handles dates, daynames, and monthnames.
+" visincr.vim: Visual-block incremented lists
+"  Author:      Charles E. Campbell, Jr.  Ph.D.
+"  Date:        May 14, 2004
+"  Version:     9
 "
-"  Usage:       Use ctrl-v to visually select a column of numbers.  Then
-"                   :I [#]
-"                       will use the first line's number as a starting point
-"                       default increment (#) is 1
-"                       will justify left (pad right)
-"
-"                   :II [# [zfill]]
-"                       will use the first line's number as a starting point
-"                       default increment (#) is 1
-"                       default zfill         is a blank (ex. :II 1 0)
-"                       will justify right (pad left)
-"
-"                                      I      II
-"                                 -   +--+   +--+
-"                                 8   |8 |   | 8|
-"                                 8   |9 |   | 9|
-"                                 8   |10|   |10|
-"                                 8   |11|   |11|
-"                                     +--+   +--+
-"
-"                   The following three commands need <calutil.vim> to do
-"                   their work:
-"
-"                   :IYMD [#] Increment year/month/day dates (by optional # days)
-"                   :IMDY [#] Increment month/day/year dates (by optional # days)
-"                   :IDMY [#] Increment day/month/year dates (by optional # days)
-"
-"                   :ID  Increment days by name (Monday, Tuesday, etc).  If only
-"                        three or fewer letters are highlighted, then only
-"                        three-letter abbreviations will be used.
-"
-"        			:IM  Increment months by name (January, February, etc).
-"                        Like ID, if three or fewer letters are highlighted,
-"                        then only three-letter abbreviations will be used.
-"
-"                   :RI RII RIYMD RIMDY RIDMY RID RM
-"                        Restricted variants of the above commands - requires
-"                        that the visual block on the current line start with
-"                        an appropriate pattern (ie. a number for :I, a
-"                        dayname for :ID, a monthname for :IM, etc).
+"				Visincr assumes that a block of numbers selected by a
+"				ctrl-v (visual block) has been selected for incrementing.
+"				This function will transform that block of numbers into
+"				an incrementing column starting from that topmost number
+"				in the visual block.  Also handles dates, daynames, and
+"				monthnames.
 "
 "  Fancy Stuff:
-"               * If the visual block is ragged right (as can happen when "$"
-"                 is used to select the right hand side), the block will have
-"                 spaces appended to straighten it out
-"               * If the strlen of the count exceeds the visual-block
-"                 allotment of spaces, then additional spaces will be inserted
-"               * Handles leading tabs by using virtual column calculations
+"				* If the visual block is ragged right (as can happen when "$"
+"				  is used to select the right hand side), the block will have
+"				  spaces appended to straighten it out
+"				* If the strlen of the count exceeds the visual-block
+"				  allotment of spaces, then additional spaces will be inserted
+"				* Handles leading tabs by using virtual column calculations
 "
-"  Author:      Charles E. Campbell, Jr.  Ph.D.
-"  Date:        Oct 21, 2003
-"  Version:     8
-"
-"  History:
-"    v8 : 06/24/03       : added IM command
-"                          added RI .. RM commands (restricted)
-"    v7 : 06/09/03       : bug fix -- years now retain leading zero
-"    v6 : 05/29/03       : bug fix -- pattern for IMDY IDMY IYMD didn't work
-"                          with text on the sides of dates; it now does
-"    v5 : II             : implements 0-filling automatically if
-"                          the first number has the format  0000...0#
-"         IYMD IMDY IDMY : date incrementing, uses <calutil.vim>
-"         ID             : day-of-week incrementing
-"    v4 : gdefault option bypassed (saved/set nogd/restored)
 
 " Exit quickly when VisBlockIncr has already been loaded or when 'compatible' is set
 if exists("loaded_visblockincr") || &cp
@@ -84,6 +34,7 @@ com! -ra -na=? IYMD call <SID>VisBlockIncr(3,<f-args>)
 com! -ra -na=? IDMY call <SID>VisBlockIncr(4,<f-args>)
 com! -ra -na=? ID   call <SID>VisBlockIncr(5,<f-args>)
 com! -ra -na=? IM   call <SID>VisBlockIncr(6,<f-args>)
+com! -ra -na=? IA	call <SID>VisBlockIncr(7,<f-args>)
 
 com! -ra -na=? RI    call <SID>VisBlockIncr(10,<f-args>)
 com! -ra -na=* RII   call <SID>VisBlockIncr(11,<f-args>)
@@ -273,6 +224,35 @@ fu! <SID>VisBlockIncr(mode,...)
 	" return from IM
    	return
    endif
+   if mode == 7
+   	" IA
+	let pat    = '^.*\%'.lft.'v\(\a\).*$'
+	let letter = substitute(curline,pat,'\1','e')
+	if letter !~ '\a'
+	 let letter= 'A'
+	endif
+	if letter =~ '[a-z]'
+	 let alphabet='abcdefghijklmnopqrstuvwxyz'
+	else
+	 let alphabet='ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+	endif
+	let ilet= stridx(alphabet,letter)
+
+    norm! `<
+    let l = y1
+    while l <= y2
+"	 call Decho("letter<".letter."> l=".l." ilet=".ilet)
+	 exe 's/\%'.lft.'v.*\%'.rght.'v/'.letter.'/e'
+	 let ilet   = (ilet + incr)%26
+	 let letter = strpart(alphabet,ilet,1)
+	 if l < y2
+   	  silent norm! j
+	 endif
+	 let l= l + 1
+	endw
+	" return from IA
+	return
+   endif
 
    let pat= '^.*\%'.lft.'v\( \=[0-9]\{1,4}\)/\( \=[0-9]\{1,2}\)/\( \=[0-9]\{1,4}\)\%'.rght.'v.*$'
    if mode == 2
@@ -457,19 +437,18 @@ fu! <SID>VisBlockIncr(mode,...)
 endf
 
 " ------------------------------------------------------------------------------
+"  vim: ts=4
 " HelpExtractor:
 set lz
-let docdiru= substitute(&rtp,',.*$','','e').'/doc'
-let docdirw= substitute(&rtp,',.*$','','e').'\doc'
-if !isdirectory(docdiru) && !isdirectory(docdirw)
+let docdir = substitute(expand("<sfile>:r").".txt",'\<plugin[/\\].*$','doc','')
+if !isdirectory(docdir)
  if has("win32")
-  echoerr 'Need to make '.docdirw.' directory first'
- else
-  echoerr 'Need to make '.docdiru.' directory first'
+  echoerr 'Please make '.docdir.' directory first'
+  unlet docdir
+  finish
+ elseif !has("mac")
+  exe "!mkdir ".docdir
  endif
- unlet docdiru
- unlet docdirw
- finish
 endif
 
 let curfile = expand("<sfile>:t:r")
@@ -490,8 +469,7 @@ silent! /^" HelpExtractor:$/,$g/.*/d
 silent! wq!
 
 set nolz
-unlet docdiru
-unlet docdirw
+unlet docdir
 unlet curfile
 "unlet docfile
 finish
@@ -499,20 +477,100 @@ finish
 " ---------------------------------------------------------------------
 " Put the help after the HelpExtractorDoc label...
 " HelpExtractorDoc:
-*visincr.txt*	The Visual Incrementing Tool		Oct 21, 2003
+*visincr.txt*	The Visual Incrementing Tool		May 14, 2004
 
 Author:  Charles E. Campbell, Jr.  <cec@NgrOyphSon.gPsfAc.nMasa.gov>
 	  (remove NOSPAM from Campbell's email before using)
 
 ==============================================================================
-1. Increasing/Decreasing Lists		*visincr*
-					*visincr-increase* *visincr-decrease*
+1. Contents				*visincr* *viscinr-contents*
+
+	1. Contents ....................: |visincr|
+	2. Quick Usage .................: |visincr-usage|
+	3. Increasing/Decreasing Lists..: |viscinr-increase| |viscinr-decrease|
+	   :I [#] ......................: |visincr-I|
+	   :II [# [zfill]] .............: |visincr-II|
+	   :IYMD [#] ...................: |visincr-IYMD|
+	   :IMDY [#] ...................: |visincr-IMDY|
+	   :IDMY [#] ...................: |visincr-IDMY|
+	   :IA [#] .....................: |visincr-IA|
+	   :ID [#] .....................: |visincr-ID|
+	   :IM [#] .....................: |visincr-IM|
+	4. Examples.....................: |visincr-examples|
+	   :I ..........................: |ex-viscinr-I|
+	   :II .........................: |ex-viscinr-II|
+	   :IMDY .......................: |ex-viscinr-IMDY|
+	   :IYMD .......................: |ex-viscinr-IYMD|
+	   :IDMY .......................: |ex-viscinr-IDMY|
+	   :IA .........................: |ex-viscinr-IA|
+	   :ID .........................: |ex-viscinr-ID|
+	5. History .....................: |visincr-history|
+
+==============================================================================
+2. Quick Usage				*visincr-usage*
+
+	Use ctrl-v to visually select a column of numbers.  Then
+
+		:I [#]  will use the first line's number as a starting point
+			default increment (#) is 1
+			will justify left (pad right)
+			For more see |visincr-I|
+
+		:II [# [zfill]]
+			will use the first line's number as a starting point
+			default increment (#) is 1
+			default zfill         is a blank (ex. :II 1 0)
+			will justify right (pad left)
+			For more see |visincr-II|
+
+			     ORIG      I        II
+			     +---+   +----+   +----+
+			     | 8 |   | 8  |   |  8 |
+			     | 8 |   | 9  |   |  9 |
+			     | 8 |   | 10 |   | 10 |
+			     | 8 |   | 11 |   | 11 |
+			     +---+   +----+   +----+
+
+		The following three commands need <calutil.vim> to do
+		their work:
+
+		:IYMD [#] Increment year/month/day dates (by optional # days)
+		:IMDY [#] Increment month/day/year dates (by optional # days)
+		:IDMY [#] Increment day/month/year dates (by optional # days)
+		For more: see |visincr-IYMD|, |visincr-IMDY|, and |visincr-IDMY|
+
+		:ID  Increment days by name (Monday, Tuesday, etc).  If only
+		     three or fewer letters are highlighted, then only
+		     three-letter abbreviations will be used.
+		     For more: see |visincr-ID|
+
+		:IA  Increment alphabetic lists
+		     For more: see |visincr-IA|
+
+		:IM  Increment months by name (January, February, etc).
+		     Like ID, if three or fewer letters are highlighted,
+		     then only three-letter abbreviations will be used.
+		     For more: see |visincr-IM|
+
+		:RI RII RIYMD RIMDY RIDMY RID RM
+		     Restricted variants of the above commands - requires
+		     that the visual block on the current line start with
+		     an appropriate pattern (ie. a number for :I, a
+		     dayname for :ID, a monthname for :IM, etc).
+		     For more, see |visincr-RI|, |visincr-RII|, |visincr-RIYMD|,
+		     |visincr-RIMDY|, |visincr-RIDMY|, |visincr-RID|, and
+		     |visincr-M|.
+
+
+==============================================================================
+3. Increasing/Decreasing Lists		*visincr-increase* *visincr-decrease*
 					*visincr-increment* *visincr-decrement*
 
 The visincr plugin facilitates making a column of increasing or decreasing
 numbers, dates, or daynames.
 
 					*I* *viscinr-I* *RI*
+	LEFT JUSTIFIED INCREMENTING
 	:I [#]  Will use the first line's number as a starting point to build
 	        a column of increasing numbers (or decreasing numbers if the
 		increment is negative).
@@ -523,7 +581,11 @@ numbers, dates, or daynames.
 		Restricted version (:RI) applies number incrementing only to
 		those lines in the visual block that begin with a number.
 
+		See |visincr-raggedright| for a discussion on ragged-right
+		handling.
+
 					*II* *visincr-II* *RII*
+	RIGHT JUSTIFIED INCREMENTING
 	:II [# [zfill]]  Will use the first line's number as a starting point
 		to build a column of increasing numbers (or decreasing numbers
 		if the increment is negative).
@@ -537,20 +599,46 @@ numbers, dates, or daynames.
 		those lines in the visual block that begin with zero or more
 		spaces and end with a number.
 
+		RAGGED RIGHT HANDLING FOR I AND II	*visincr-raggedright*
+		For :I and :II:
+
+		If the visual block is ragged on the right-hand side (as can
+		easily happen when the "$" is used to select the
+		right-hand-side), the block will have spaces appended to
+		straighten it out.  If the string length of the count exceeds
+		the visual-block, then additional spaces will be inserted as
+		needed.  Leading tabs are handled by using virtual column
+		calculations.
+
+	DATE INCREMENTING
 	:IYMD [#]    year/month/day	*IYMD*	*visincr-IYMD* *RIYMD*
 	:IMDY [#]    month/day/year	*IMDY*	*visincr-IMDY* *RIMDY*
-	:IDMY [#]    day/month/year	*IDMY*	*visincr-IDMY* *IDMY*
+	:IDMY [#]    day/month/year	*IDMY*	*visincr-IDMY* *RIDMY*
 		Will use the starting line's date to construct an increasing
 		or decreasing list of dates, depending on the sign of the
 		number.
 
 		    Default increment: 1 (in days)
 
-		Restricted version (:RIYMD, :RIMDY, :RIDMY) applies number
+		Restricted versions (:RIYMD, :RIMDY, :RIDMY) applies number
 		incrementing only to those lines in the visual block that
 		begin with a date (#/#/#).
 
+
+		CALUTIL NEEDED FOR DATE INCREMENTING
+		For :IYMD, :IMDY, and IDMY:
+
+		You'll need the <calutil.vim> plugin, available as
+		"Calendar Utilities" under the following url:
+
+		http://www.erols.com/astronaut/vim/index.html#VimFuncs
+
+					*IA* *visincr-IA*
+	ALPHABETIC INCREMENTING
+	:IA	Will produce an increasing/decreasing list of alphabetic characters.
+
 					*ID* *visincr-ID* *RID*
+	DAYNAME INCREMENTING
 	:ID [#]	Will produce an increasing/decreasing list of daynames.  Three-letter
 	        daynames will be used if the first day on the first line is a three
 		letter dayname; otherwise, full names will be used.
@@ -559,6 +647,7 @@ numbers, dates, or daynames.
 		to those lines in the visual block that begin with a dayname
 		(mon tue wed thu fri sat).
 
+	MONTHNAME INCREMENTING		*IM* *visincr-IM* *RIM*
 	:IM [#] will produce an increasing/decreasing list of monthnames.  Monthnames
 		may be three-letter versions (jan feb etc) or fully-spelled out
 		monthnames.
@@ -568,26 +657,11 @@ numbers, dates, or daynames.
 		monthname (jan feb mar etc).
 
 
-	For :I and :II:
-		If the visual block is ragged on the right-hand side (as can
-		easily happen when the "$" is used to select the
-		right-hand-side), the block will have spaces appended to
-		straighten it out.  If the string length of the count exceeds
-		the visual-block, then additional spaces will be inserted as
-		needed.  Leading tabs are handled by using virtual column
-		calculations.
-
-	For :IYMD, :IMDY, and IDMY:
-		You'll need the <calutil.vim> plugin, available as
-		"Calendar Utilities" under the following url:
-
-		http://www.erols.com/astronaut/vim/index.html#VimFuncs
-
-
 ==============================================================================
-2. Examples:						*visincr-examples*
+4. Examples:						*visincr-examples*
 
 
+	LEFT JUSTIFIED INCREMENTING EXAMPLES
 	:I                              :I 2            *ex-visincr-I*
 	            Use ctrl-V to                   Use ctrl-V to
 	Original    Select, :I          Original    Select, :I 2
@@ -607,6 +681,7 @@ numbers, dates, or daynames.
 	   8            4                  8            -4
 
 
+	RIGHT JUSTIFIED INCREMENTING EXAMPLES
 	:II                             :II 2           *ex-visincr-II*
 	            Use ctrl-V to                   Use ctrl-V to
 	Original    Select, :II         Original    Select, :II 2
@@ -626,6 +701,7 @@ numbers, dates, or daynames.
 	   8            4                  8            -4
 
 
+	DATE INCREMENTING EXAMPLES
 	:IMDY                                   *ex-visincr-IMDY*
 	          Use ctrl-V to                   Use ctrl-V to
 	Original  Select, :IMDY         Original  Select, :IMDY 7
@@ -656,6 +732,17 @@ numbers, dates, or daynames.
 	10/06/03    14/ 6/03            10/06/03     8/ 7/03
 
 
+	ALPHABETIC INCREMENTING EXAMPLES
+	:IA                                     *ex-visincr-IA*
+	          Use ctrl-V to                 Use ctrl-V to
+	Original  Select, :IA         Original  Select, :IA 2
+	   a)          a)                A)           A)
+	   a)          b)                A)           C)
+	   a)          c)                A)           E)
+	   a)          d)                A)           G)
+
+
+	DAYNAME INCREMENTING EXAMPLES
 	:ID                                     *ex-visincr-ID*
 	          Use ctrl-V to                 Use ctrl-V to
 	Original  Select, :ID         Original  Select, :ID 2
@@ -675,5 +762,41 @@ numbers, dates, or daynames.
 	 Sunday     Wednesday          Sunday     Wednesday
 	 Sunday     Thursday           Sunday     Thursday
 
+
+	MONTHNAME INCREMENTING EXAMPLES
+	:IM                                     *ex-visincr-IM*
+	          Use ctrl-V to                 Use ctrl-V to
+	Original  Select, :IM         Original  Select, :IM 2
+	  Jan       Jan                 Jan       Jan
+	  Jan       Feb                 Jan       Mar
+	  Jan       Mar                 Jan       May
+	  Jan       Apr                 Jan       Jul
+	  Jan       May                 Jan       Sep
+
+	:IM
+	          Use ctrl-V to                 Use ctrl-V to
+	Original  Select, :IM         Original  Select, :IM 2
+	 January    January            January    January
+	 January    February           January    March
+	 January    March              January    May
+	 January    April              January    July
+	 January    May                January    September
+
+
+==============================================================================
+5. History:						*visincr-history*
+
+
+	v9 : 03/05/04       : included IA command
+	v8 : 06/24/03       : added IM command
+	                      added RI .. RM commands (restricted)
+	v7 : 06/09/03       : bug fix -- years now retain leading zero
+	v6 : 05/29/03       : bug fix -- pattern for IMDY IDMY IYMD didn't work
+	                      with text on the sides of dates; it now does
+	v5 : II             : implements 0-filling automatically if
+	                      the first number has the format  0000...0#
+	     IYMD IMDY IDMY : date incrementing, uses <calutil.vim>
+	     ID             : day-of-week incrementing
+	v4 : gdefault option bypassed (saved/set nogd/restored)
 
 vim:tw=78:ts=8:ft=help
