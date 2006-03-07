@@ -1,7 +1,7 @@
 " visincr.vim: Visual-block incremented lists
 "  Author:      Charles E. Campbell, Jr.  Ph.D.
-"  Date:        Aug 24, 2004
-"  Version:     11
+"  Date:        Mar 07, 2006
+"  Version:     12
 "
 "				Visincr assumes that a block of numbers selected by a
 "				ctrl-v (visual block) has been selected for incrementing.
@@ -21,28 +21,30 @@
 " GetLatestVimScripts: 670 1 :AutoInstall: visincr.vim
 
 " ---------------------------------------------------------------------
-" Exit quickly when VisBlockIncr has already been loaded or when 'compatible' is set {{{1
-if exists("loaded_visblockincr") || &cp
+" Load Once: {{{1
+if &cp || exists("g:loaded_visincr")
   finish
 endif
-let loaded_visblockincr= "v7"
+let s:keepcpo        = &cpo
+let g:loaded_visincr = "v12"
+set cpo&vim
 
 " ------------------------------------------------------------------------------
 " Public Interface: {{{1
 com! -ra -na=? I    call <SID>VisBlockIncr(0,<f-args>)
 com! -ra -na=* II   call <SID>VisBlockIncr(1,<f-args>)
-com! -ra -na=? IMDY call <SID>VisBlockIncr(2,<f-args>)
-com! -ra -na=? IYMD call <SID>VisBlockIncr(3,<f-args>)
-com! -ra -na=? IDMY call <SID>VisBlockIncr(4,<f-args>)
+com! -ra -na=* IMDY call <SID>VisBlockIncr(2,<f-args>)
+com! -ra -na=* IYMD call <SID>VisBlockIncr(3,<f-args>)
+com! -ra -na=* IDMY call <SID>VisBlockIncr(4,<f-args>)
 com! -ra -na=? ID   call <SID>VisBlockIncr(5,<f-args>)
 com! -ra -na=? IM   call <SID>VisBlockIncr(6,<f-args>)
 com! -ra -na=? IA	call <SID>VisBlockIncr(7,<f-args>)
 
 com! -ra -na=? RI    call <SID>VisBlockIncr(10,<f-args>)
 com! -ra -na=* RII   call <SID>VisBlockIncr(11,<f-args>)
-com! -ra -na=? RIMDY call <SID>VisBlockIncr(12,<f-args>)
-com! -ra -na=? RIYMD call <SID>VisBlockIncr(13,<f-args>)
-com! -ra -na=? RIDMY call <SID>VisBlockIncr(14,<f-args>)
+com! -ra -na=* RIMDY call <SID>VisBlockIncr(12,<f-args>)
+com! -ra -na=* RIYMD call <SID>VisBlockIncr(13,<f-args>)
+com! -ra -na=* RIDMY call <SID>VisBlockIncr(14,<f-args>)
 com! -ra -na=? RID   call <SID>VisBlockIncr(15,<f-args>)
 com! -ra -na=? RIM   call <SID>VisBlockIncr(16,<f-args>)
 
@@ -55,23 +57,39 @@ endif
 
 " ------------------------------------------------------------------------------
 " VisBlockIncr:	{{{1
-fun! <SID>VisBlockIncr(mode,...)
-"  call Dfunc("VisBlockIncr(mode<".a:mode."> a:0=".a:0)
+fun! <SID>VisBlockIncr(method,...)
+"  call Dfunc("VisBlockIncr(method<".a:method.">) a:0=".a:0)
 
-  " save boundary line numbers
-  " and set up mode
-  let y1   = line("'<")
-  let y2   = line("'>")
-  let mode = (a:mode >= 10)? a:mode - 10 : a:mode
+  " avoid problems with user options
+  let fokeep    = &fo
+  let magickeep = &magic
+  let reportkeep= &report
+  set fo=tcq magic report=9999
 
-  " get increment (default=1)
+  " visblockincr only uses visual-block! {{{2
+  if visualmode() != "\<c-v>"
+   echoerr "Please use visual-block mode (ctrl-v)!"
+   let &fo    = fokeep
+   let &magic = magickeep
+   let &report= reportkeep
+"  call Dret("VisBlockIncr")
+   return
+  endif
+
+  " save boundary line numbers and set up method {{{2
+  let y1      = line("'<")
+  let y2      = line("'>")
+  let method  = (a:method >= 10)? a:method - 10 : a:method
+  let leaddate= g:visincr_leaddate
+
+  " get increment (default=1) {{{2
   if a:0 > 0
    let incr= a:1
   else
    let incr= 1
   endif
 
-  " set up restriction pattern
+  " set up restriction pattern {{{2
   let leftcol = virtcol("'<")
   let rghtcol = virtcol("'>")
   if leftcol > rghtcol
@@ -81,59 +99,77 @@ fun! <SID>VisBlockIncr(mode,...)
   let width= rghtcol - leftcol + 1
 "  call Decho("width= [rghtcol=".rghtcol."]-[leftcol=".leftcol."]+1=".width)
 
-  if     a:mode == 10	" :I
+  if     a:method == 10	" :I
    let restrict= '\%'.col(".").'c\d'
 "   call Decho(":I restricted<".restrict.">")
-  elseif a:mode == 11	" :II
+  elseif a:method == 11	" :II
    let restrict= '\%'.col(".").'c\s\{,'.width.'}\d'
 "   call Decho(":II restricted<".restrict.">")
-  elseif a:mode == 12	" :IMDY
+  elseif a:method == 12	" :IMDY
    let restrict= '\%'.col(".").'c\d\{1,2}/\d\{1,2}/\d\{2,4}'
 "   call Decho(":IMDY restricted<".restrict.">")
-  elseif a:mode == 13	" :IYMD
+  elseif a:method == 13	" :IYMD
    let restrict= '\%'.col(".").'c\d\{2,4}/\d\{1,2}/\d\{1,2}'
 "   call Decho(":IYMD restricted<".restrict.">")
-  elseif a:mode == 14	" :IDMY
+  elseif a:method == 14	" :IDMY
    let restrict= '\%'.col(".").'c\d\{1,2}/\d\{1,2}/\d\{2,4}'
 "   call Decho(":IDMY restricted<".restrict.">")
-  elseif a:mode == 15	" :ID
-   let restrict= '\c\%'.col(".").'c\(mon\|tue\|wed\|thu\|fri\|sat\|sun\)'
+  elseif a:method == 15	" :ID
+   if exists("g:visincr_dow")
+   	let dowlist = substitute(g:visincr_dow,'\(\a\{1,3}\)[^,]*\%(,\|$\)','\1\\|','ge')
+   	let dowlist = substitute(dowlist,'\\|$','','e')
+    let restrict= '\c\%'.col(".").'c\('.substitute(dowlist,',','\\|','ge').'\)'
+"	call Decho("restrict<".restrict.">")
+   else
+    let restrict= '\c\%'.col(".").'c\(mon\|tue\|wed\|thu\|fri\|sat\|sun\)'
+   endif
 "   call Decho(":ID restricted<".restrict.">")
-  elseif a:mode == 16	" :IM
-   let restrict= '\c\%'.col(".").'c\(jan\|feb\|mar\|apr\|may\|jun\|jul\|aug\|sep\|oct\|nov\|dec\)'
+  elseif a:method == 16	" :IM
+   if exists("g:visincr_month")
+   	let monlist = substitute(g:visincr_month,'\(\a\{1,3}\)[^,]*\%(,\|$\)','\1\\|','ge')
+   	let monlist = substitute(monlist,'\\|$','','e')
+    let restrict= '\c\%'.col(".").'c\('.substitute(monlist,',','\\|','ge').'\)'
+"	call Decho("restrict<".restrict.">")
+   else
+    let restrict= '\c\%'.col(".").'c\(jan\|feb\|mar\|apr\|may\|jun\|jul\|aug\|sep\|oct\|nov\|dec\)'
+   endif
 "   call Decho(":IM restricted<".restrict.">")
   endif
 
-  if mode >= 2
-   " IMDY  IYMD  IDMY  ID  IM
+  " determine zfill {{{2
+"  call Decho("a:0=".a:0." method=".method)
+  if a:0 > 1 && ((2 <= method && method <= 4) || (12 <= method && method <= 14))
+   let leaddate= a:2
+"   call Decho("set leaddate<".leaddate.">")
+  elseif a:0 > 1 && method
+   let zfill= a:2
+"   call Decho("set zfill<".zfill.">")
+  else
+   let zfill= ' '
+  endif
+
+  " IMDY  IYMD  IDMY  ID  IM: {{{2
+  if method >= 2
    let rghtcol = rghtcol + 1
    let curline = getline("'<")
 
-   if mode == 5
-    " ID
+   " ID: {{{3
+   if method == 5
     let pat    = '^.*\%'.leftcol.'v\(\a\+\)\%'.rghtcol.'v.*$'
     let dow    = substitute(substitute(curline,pat,'\1','e'),' ','','ge')
     let dowlen = strlen(dow)
 "	call Decho("pat<".pat."> dow<".dow."> dowlen=".dowlen)
-	if     dow =~ '\c\<mon'
-	 let idow= 0
-	elseif dow =~ '\c\<tue'
-	 let idow= 1
-	elseif dow =~ '\c\<wed'
-	 let idow= 2
-	elseif dow =~ '\c\<thu'
-	 let idow= 3
-	elseif dow =~ '\c\<fri'
-	 let idow= 4
-	elseif dow =~ '\c\<sat'
-	 let idow= 5
-	elseif dow =~ '\c\<sun'
-	 let idow= 6
+
+    " set up long daynames
+    if exists("g:visincr_dow")
+	 let dow_0= substitute(g:visincr_dow,'^\([^,]*\),.*$',               '\1','')
+	 let dow_1= substitute(g:visincr_dow,'^\%([^,]*,\)\{1}\([^,]*\),.*$','\1','')
+	 let dow_2= substitute(g:visincr_dow,'^\%([^,]*,\)\{2}\([^,]*\),.*$','\1','')
+	 let dow_3= substitute(g:visincr_dow,'^\%([^,]*,\)\{3}\([^,]*\),.*$','\1','')
+	 let dow_4= substitute(g:visincr_dow,'^\%([^,]*,\)\{4}\([^,]*\),.*$','\1','')
+	 let dow_5= substitute(g:visincr_dow,'^\%([^,]*,\)\{5}\([^,]*\),.*$','\1','')
+	 let dow_6= substitute(g:visincr_dow,'^\%([^,]*,\)\{6}\([^,]*\)$',   '\1','')
 	else
-	 echoerr "***error*** misspelled day-of-week <".dow.">"
-	endif
-	if strlen(dow) > 3
-"	 call Decho("set up long daynames")
 	 let dow_0= "Monday"
 	 let dow_1= "Tuesday"
 	 let dow_2= "Wednesday"
@@ -141,16 +177,40 @@ fun! <SID>VisBlockIncr(mode,...)
 	 let dow_4= "Friday"
 	 let dow_5= "Saturday"
 	 let dow_6= "Sunday"
-	else
-"	 call Decho("set up short daynames")
-	 let dow_0= "Mon"
-	 let dow_1= "Tue"
-	 let dow_2= "Wed"
-	 let dow_3= "Thu"
-	 let dow_4= "Fri"
-	 let dow_5= "Sat"
-	 let dow_6= "Sun"
 	endif
+
+	" if the daynames under the cursor is <= 3, transform
+	" long daynames to short daynames
+	if strlen(dow) <= 3
+"	 call Decho("transform long daynames to short daynames")
+     let dow_0= strpart(dow_0,0,3)
+     let dow_1= strpart(dow_1,0,3)
+     let dow_2= strpart(dow_2,0,3)
+     let dow_3= strpart(dow_3,0,3)
+     let dow_4= strpart(dow_4,0,3)
+     let dow_5= strpart(dow_5,0,3)
+     let dow_6= strpart(dow_6,0,3)
+	endif
+
+	" identify day-of-week under cursor
+	let idow= 0
+	while idow < 7
+"	 call Decho("dow<".dow.">  dow_".idow."<".dow_{idow}.">")
+	 if dow =~ '\c\<'.strpart(dow_{idow},0,3)
+	  break
+	 endif
+	 let idow= idow + 1
+	endwhile
+	if idow >= 7
+	 echoerr "***error*** misspelled day-of-week <".dow.">"
+     let &fo    = fokeep
+     let &magic = magickeep
+     let &report= reportkeep
+"	 call Dret("VisBlockIncr : unable to identify day-of-week")
+	 return
+	endif
+
+	" generate incremented dayname list
     norm! `<
     let l = y1
     while l < y2
@@ -165,42 +225,32 @@ fun! <SID>VisBlockIncr(mode,...)
 	 let l= l + 1
 	endw
 	" return from ID
+    let &fo    = fokeep
+    let &magic = magickeep
+    let &report= reportkeep
 "    call Dret("VisBlockIncr : ID")
    	return
    endif
-   if mode == 6
-    " IM
+
+   " IM: {{{3
+   if method == 6
     let pat    = '^.*\%'.leftcol.'v\(\a\+\)\%'.rghtcol.'v.*$'
     let mon    = substitute(substitute(curline,pat,'\1','e'),' ','','ge')
     let monlen = strlen(mon)
-	if     mon =~ '\cjan'
-	 let imon= 0
-	elseif mon =~ '\cfeb'
-	 let imon= 1
-	elseif mon =~ '\cmar'
-	 let imon= 2
-	elseif mon =~ '\capr'
-	 let imon= 3
-	elseif mon =~ '\cmay'
-	 let imon= 4
-	elseif mon =~ '\cjun'
-	 let imon= 5
-	elseif mon =~ '\cjul'
-	 let imon= 6
-	elseif mon =~ '\caug'
-	 let imon= 7
-	elseif mon =~ '\csep'
-	 let imon= 8
-	elseif mon =~ '\coct'
-	 let imon= 9
-	elseif mon =~ '\cnov'
-	 let imon= 10
-	elseif mon =~ '\cdec'
-	 let imon= 11
+	if exists("g:visincr_month")
+	 let mon_0 = substitute(g:visincr_month,'^\([^,]*\),.*$',                '\1','')
+	 let mon_1 = substitute(g:visincr_month,'^\%([^,]*,\)\{1}\([^,]*\),.*$', '\1','')
+	 let mon_2 = substitute(g:visincr_month,'^\%([^,]*,\)\{2}\([^,]*\),.*$', '\1','')
+	 let mon_3 = substitute(g:visincr_month,'^\%([^,]*,\)\{3}\([^,]*\),.*$', '\1','')
+	 let mon_4 = substitute(g:visincr_month,'^\%([^,]*,\)\{4}\([^,]*\),.*$', '\1','')
+	 let mon_5 = substitute(g:visincr_month,'^\%([^,]*,\)\{5}\([^,]*\),.*$', '\1','')
+	 let mon_6 = substitute(g:visincr_month,'^\%([^,]*,\)\{6}\([^,]*\),.*$', '\1','')
+	 let mon_7 = substitute(g:visincr_month,'^\%([^,]*,\)\{7}\([^,]*\),.*$', '\1','')
+	 let mon_8 = substitute(g:visincr_month,'^\%([^,]*,\)\{8}\([^,]*\),.*$', '\1','')
+	 let mon_9 = substitute(g:visincr_month,'^\%([^,]*,\)\{9}\([^,]*\),.*$', '\1','')
+	 let mon_10= substitute(g:visincr_month,'^\%([^,]*,\)\{10}\([^,]*\),.*$','\1','')
+	 let mon_11= substitute(g:visincr_month,'^\%([^,]*,\)\{11}\([^,]*\)$',   '\1','')
 	else
-	 echoerr "***error*** misspelled day-of-week <".mon.">"
-	endif
-	if strlen(mon) > 3
 	 let mon_0 = "January"
 	 let mon_1 = "February"
 	 let mon_2 = "March"
@@ -213,20 +263,32 @@ fun! <SID>VisBlockIncr(mode,...)
 	 let mon_9 = "October"
 	 let mon_10= "November"
 	 let mon_11= "December"
-	else
-	 let mon_0 = "Jan"
-	 let mon_1 = "Feb"
-	 let mon_2 = "Mar"
-	 let mon_3 = "Apr"
-	 let mon_4 = "May"
-	 let mon_5 = "Jun"
-	 let mon_6 = "Jul"
-	 let mon_7 = "Aug"
-	 let mon_8 = "Sep"
-	 let mon_9 = "Oct"
-	 let mon_10= "Nov"
-	 let mon_11= "Dec"
 	endif
+
+	" identify month under cursor
+	let imon= 0
+	while imon < 12
+	 if mon =~ '\c\<'.strpart(mon_{imon},0,3)
+	  break
+	 endif
+	 let imon= imon + 1
+	endwhile
+	if imon >= 12
+	 echoerr "***error*** misspelled month <".mon.">"
+	endif
+
+	" if monthname is three or fewer characters long,
+	" transform monthnames to three character versions
+	if strlen(mon) <= 3
+"	 call Decho("transform monthnames to short versions")
+	 let jmon= 0
+	 while jmon < 12
+	  let mon_{jmon} = strpart(mon_{jmon},0,3)
+	  let jmon       = jmon + 1
+	 endwhile
+	endif
+
+	" generate incremented monthname list
     norm! `<
     let l = y1
     while l < y2
@@ -240,11 +302,15 @@ fun! <SID>VisBlockIncr(mode,...)
 	 let l= l + 1
 	endw
 	" return from IM
+    let &fo    = fokeep
+    let &magic = magickeep
+    let &report= reportkeep
 "    call Dret("VisBlockIncr : IM")
    	return
    endif
-   if mode == 7
-   	" IA
+
+   " IA: {{{3
+   if method == 7
 	let pat    = '^.*\%'.leftcol.'v\(\a\).*$'
 	let letter = substitute(curline,pat,'\1','e')
 	if letter !~ '\a'
@@ -270,27 +336,33 @@ fun! <SID>VisBlockIncr(mode,...)
 	 let l= l + 1
 	endw
 	" return from IA
+	let &fo    = fokeep
+	let &magic = magickeep
+    let &report= reportkeep
 "    call Dret("VisBlockIncr : IA")
 	return
    endif
 
    let pat= '^.*\%'.leftcol.'v\( \=[0-9]\{1,4}\)/\( \=[0-9]\{1,2}\)/\( \=[0-9]\{1,4}\)\%'.rghtcol.'v.*$'
-   if mode == 2
-   	" IMDY
+
+   " IMDY: {{{3
+   if method == 2
     let m     = substitute(substitute(curline,pat,'\1',''),' ','','ge')+0
     let d     = substitute(substitute(curline,pat,'\2',''),' ','','ge')+0
     let y     = substitute(substitute(curline,pat,'\3',''),' ','','ge')+0
 	let type  = 2
 "    call Decho("IMDY: y=".y." m=".m." d=".d." leftcol=".leftcol." rghtcol=".rghtcol)
-   elseif mode == 3
-   	"  IYMD
+
+   " IYMD: {{{3
+   elseif method == 3
     let y     = substitute(substitute(curline,pat,'\1',''),' ','','ge')+0
     let m     = substitute(substitute(curline,pat,'\2',''),' ','','ge')+0
     let d     = substitute(substitute(curline,pat,'\3',''),' ','','ge')+0
 	let type  = 1
 "    call Decho("IYMD: y=".y." m=".m." d=".d." leftcol=".leftcol." rghtcol=".rghtcol)
-   elseif mode == 4
-   	"  IDMY
+
+   " IDMY: {{{3
+   elseif method == 4
     let d     = substitute(substitute(curline,pat,'\1',''),' ','','ge')+0
     let m     = substitute(substitute(curline,pat,'\2',''),' ','','ge')+0
     let y     = substitute(substitute(curline,pat,'\3',''),' ','','ge')+0
@@ -299,6 +371,8 @@ fun! <SID>VisBlockIncr(mode,...)
    else
    	echoerr "***error in <visincr.vim> script"
    endif
+
+   " Julian day/Calendar day calculations {{{3
    let julday= Cal2Jul(y,m,d)
    norm! `<
    let l = y1
@@ -309,18 +383,24 @@ fun! <SID>VisBlockIncr(mode,...)
 	  continue
 	 endif
 	let doy   = Jul2Cal(julday,type)
+
+	" IYMD: {{{3
 	if type == 1
-	 " IYMD
-     let doy   = substitute(doy,'^\d/',g:visincr_leaddate.'&','e')
-     let doy   = substitute(doy,'/\(\d/\)','/'.g:visincr_leaddate.'\1','e')
-     let doy   = substitute(doy,'/\(\d\)$','/'.g:visincr_leaddate.'\1','e')
+     let doy   = substitute(doy,'^\d/',leaddate.'&','e')
+     let doy   = substitute(doy,'/\(\d/\)','/'.leaddate.'\1','e')
+     let doy   = substitute(doy,'/\(\d\)$','/'.leaddate.'\1','e')
+
+	" IMDY IDMY: {{{3
 	else
-	 " IMDY IDMY
      let doy   = substitute(doy,'^\d/',' &','e')
-     let doy   = substitute(doy,'/\(\d/\)','/'.g:visincr_leaddate.'\1','e')
-     let doy   = substitute(doy,'/\(\d\)$','/'.g:visincr_leaddate.'\1','e')
+     let doy   = substitute(doy,'/\(\d/\)','/'.leaddate.'\1','e')
+     let doy   = substitute(doy,'/\(\d\)$','/'.leaddate.'\1','e')
 	endif
+
 	let doy   = escape(doy,'/')
+	if leaddate != ' '
+	 let doy= substitute(doy,' ',leaddate,'ge')
+	endif
 	exe 's/\%'.leftcol.'v.*\%'.rghtcol.'v/'.doy.'/e'
     let l     = l + 1
 	let julday= julday + incr
@@ -328,19 +408,15 @@ fun! <SID>VisBlockIncr(mode,...)
    	 norm! j
 	endif
    endw
+   let &fo    = fokeep
+   let &magic = magickeep
+   let &report= reportkeep
 "   call Dret("VisBlockIncr : IMDY  IYMD  IDMY  ID  IM")
    return
-  endif
+  endif " IMDY  IYMD  IDMY  ID  IM
 
-  " :I or :II (mode is 0 or 1)
-  if a:0 > 1 && mode
-   let zfill= a:2
-  else
-   let zfill= ' '
-  endif
-"  call Decho("mode=".mode."  y1=".y1."  y2=".y2."  incr=".incr."  zfill<".zfill.">")
-
-  " construct a line from the first line that
+  " I II: {{{2
+  " construct a line from the first line that {{{3
   " only has the number in it
   let rml   = rghtcol - leftcol
   let rmlp1 = rml  + 1
@@ -360,16 +436,16 @@ fun! <SID>VisBlockIncr(mode,...)
   let cnt    = substitute(cnt,'^0*\([1-9]\|0$\)','\1',"ge")
 "  call Decho("cnt=".cnt." pat<".pat.">")
 
-  " left-mode with zeros
+  " left-method with zeros {{{3
   " IF  top number is zero-modeded
   " AND we're justified right
   " AND increment is positive
   " AND user didn't specify a modeding character
-  if a:0 < 2 && mode > 0 && cnt != ocnt && incr > 0
+  if a:0 < 2 && method > 0 && cnt != ocnt && incr > 0
    let zfill= '0'
   endif
 
-  " determine how much modeding is needed
+  " determine how much incrementing is needed {{{3
   let maxcnt   = cnt + incr*(y2 - y1)
   let maxcntlen= strlen(maxcnt)
   if cntlen > maxcntlen
@@ -377,7 +453,7 @@ fun! <SID>VisBlockIncr(mode,...)
   endif
 "  call Decho("maxcntlen=".maxcntlen)
 
-  " go through visual block incrementing numbers based
+  " go through visual block incrementing numbers based {{{3
   " on first number (saved in cnt), taking care to
   " avoid issuing "0h" commands.
   norm! `<
@@ -392,7 +468,7 @@ fun! <SID>VisBlockIncr(mode,...)
 	endif
     let cntlen= strlen(cnt)
 
-	" Straighten out ragged-right visual-block selection
+	" Straighten out ragged-right visual-block selection {{{3
 	" by appending spaces as needed
 	norm! $
 	while virtcol("$") <= rghtcol
@@ -400,13 +476,13 @@ fun! <SID>VisBlockIncr(mode,...)
 	endwhile
 	norm! 0
 
-	" convert visual block line to all spaces
+	" convert visual block line to all spaces {{{3
 	if virtcol(".") != leftcol
 	 exe 'norm! /\%'.leftcol."v\<Esc>"
 	endif
     exe "norm! " . rmlp1 . "r "
 
-	" cnt has gotten bigger than the visually-selected
+	" cnt has gotten bigger than the visually-selected {{{3
 	" area allows.  Will insert spaces to accommodate it.
 	if maxcntlen > 0
 	 let ins= maxcntlen - rmlp1
@@ -418,9 +494,9 @@ fun! <SID>VisBlockIncr(mode,...)
      let ins= ins - 1
     endwhile
 
-	" back up to left-of-block (plus optional left-hand-side modeding)
+	" back up to left-of-block (plus optional left-hand-side modeling) {{{3
 	norm! 0
-	if mode == 0
+	if method == 0
 	 let bkup= leftcol
 	elseif maxcntlen > 0
 	 let bkup= leftcol + maxcntlen - cntlen
@@ -432,7 +508,7 @@ fun! <SID>VisBlockIncr(mode,...)
 	 exe 'norm! /\%'.bkup."v\<Esc>"
 	endif
 
-	" replace with count
+	" replace with count {{{3
 	exe "norm! R" . cnt . "\<Esc>"
 	if cntlen > 1
 	 let cntlenm1= cntlen - 1
@@ -445,22 +521,55 @@ fun! <SID>VisBlockIncr(mode,...)
 	 let &gd= gdkeep
 	endif
 
-	" set up for next line
+	" set up for next line {{{3
 	if l != y2
 	 norm! j
 	endif
     let cnt= cnt + incr
     let l  = l  + 1
   endw
+  " }}}2
 
+  let &fo    = fokeep
+  let &magic = magickeep
+  let &report= reportkeep
 "  call Dret("VisBlockIncr")
 endfun
 
 " ------------------------------------------------------------------------------
+"  Restoration: {{{1
+let &cpo= s:keepcpo
+unlet s:keepcpo
+" ------------------------------------------------------------------------------
+"  Modelines: {{{1
 "  vim: ts=4 fdm=marker
 " HelpExtractor:
+"  Author:	Charles E. Campbell, Jr.
+"  Version:	3
+"  Date:	May 25, 2005
+"
+"  History:
+"    v3 May 25, 2005 : requires placement of code in plugin directory
+"                      cpo is standardized during extraction
+"    v2 Nov 24, 2003 : On Linux/Unix, will make a document directory
+"                      if it doesn't exist yet
+"
+" GetLatestVimScripts: 748 1 HelpExtractor.vim
+" ---------------------------------------------------------------------
 set lz
-let docdir = substitute(expand("<sfile>:r").".txt",'\<plugin[/\\].*$','doc','')
+let s:HelpExtractor_keepcpo= &cpo
+set cpo&vim
+let docdir = expand("<sfile>:r").".txt"
+if docdir =~ '\<plugin\>'
+ let docdir = substitute(docdir,'\<plugin[/\\].*$','doc','')
+else
+ if has("win32")
+  echoerr expand("<sfile>:t").' should first be placed in your vimfiles\plugin directory'
+ else
+  echoerr expand("<sfile>:t").' should first be placed in your .vim/plugin directory'
+ endif
+ finish
+endif
 if !isdirectory(docdir)
  if has("win32")
   echoerr 'Please make '.docdir.' directory first'
@@ -492,15 +601,21 @@ set nolz
 unlet docdir
 unlet curfile
 "unlet docfile
+let &cpo= s:HelpExtractor_keepcpo
+unlet s:HelpExtractor_keepcpo
 finish
 
 " ---------------------------------------------------------------------
 " Put the help after the HelpExtractorDoc label...
 " HelpExtractorDoc:
-*visincr.txt*	The Visual Incrementing Tool		Aug 24, 2004
+*visincr.txt*	The Visual Incrementing Tool		May 19, 2005
 
-Author:  Charles E. Campbell, Jr.  <cec@NgrOyphSon.gPsfAc.nMasa.gov>
+Author:  Charles E. Campbell, Jr.  <NdrchipO@ScampbellPfamily.AbizM>
 	  (remove NOSPAM from Campbell's email before using)
+Copyright: (c) 2004-2005 by Charles E. Campbell, Jr.	*visincr-copyright*
+           The VIM LICENSE applies to visincr.vim and visincr.txt
+           (see |copyright|) except use "visincr" instead of "Vim"
+	   No warranty, express or implied.  Use At-Your-Own-Risk.
 
 ==============================================================================
 1. Contents				*visincr* *viscinr-contents*
@@ -508,14 +623,14 @@ Author:  Charles E. Campbell, Jr.  <cec@NgrOyphSon.gPsfAc.nMasa.gov>
 	1. Contents ....................: |visincr|
 	2. Quick Usage .................: |visincr-usage|
 	3. Increasing/Decreasing Lists..: |viscinr-increase| |viscinr-decrease|
-	   :I [#] ......................: |visincr-I|
-	   :II [# [zfill]] .............: |visincr-II|
-	   :IYMD [#] ...................: |visincr-IYMD|
-	   :IMDY [#] ...................: |visincr-IMDY|
-	   :IDMY [#] ...................: |visincr-IDMY|
-	   :IA [#] .....................: |visincr-IA|
-	   :ID [#] .....................: |visincr-ID|
-	   :IM [#] .....................: |visincr-IM|
+	   :I    [#] ...................: |visincr-I|
+	   :II   [# [zfill]] ...........: |visincr-II|
+	   :IYMD [# [zfill]] ...........: |visincr-IYMD|
+	   :IMDY [# [zfill]] ...........: |visincr-IMDY|
+	   :IDMY [# [zfill]] ...........: |visincr-IDMY|
+	   :IA   [#] ...................: |visincr-IA|
+	   :ID   [#] ...................: |visincr-ID|
+	   :IM   [#] ...................: |visincr-IM|
 	4. Examples.....................: |visincr-examples|
 	   :I ..........................: |ex-viscinr-I|
 	   :II .........................: |ex-viscinr-II|
@@ -589,7 +704,7 @@ Author:  Charles E. Campbell, Jr.  <cec@NgrOyphSon.gPsfAc.nMasa.gov>
 The visincr plugin facilitates making a column of increasing or decreasing
 numbers, dates, or daynames.
 
-					*I* *viscinr-I* *RI*
+							*I* *viscinr-I*
 	LEFT JUSTIFIED INCREMENTING
 	:I [#]  Will use the first line's number as a starting point to build
 	        a column of increasing numbers (or decreasing numbers if the
@@ -598,14 +713,15 @@ numbers, dates, or daynames.
 		    Default increment: 1
 		    Justification    : left (will pad on the right)
 
-		Restricted version (:RI) applies number incrementing only to
-		those lines in the visual block that begin with a number.
+							*visincr-RI*
+		The restricted version (:RI) applies number incrementing only
+		to those lines in the visual block that begin with a number.
 
 		See |visincr-raggedright| for a discussion on ragged-right
 		handling.
 
 
-	RIGHT JUSTIFIED INCREMENTING			*II* *visincr-II* *RII*
+	RIGHT JUSTIFIED INCREMENTING			*II* *visincr-II*
 	:II [# [zfill]]  Will use the first line's number as a starting point
 		to build a column of increasing numbers (or decreasing numbers
 		if the increment is negative).
@@ -615,11 +731,12 @@ numbers, dates, or daynames.
 		    Zfill            : left padding will be done with the given
 		                       character, typically a zero.
 
-		Restricted version (:RII) applies number incrementing only to
+							*visincr-RII*
+		The restricted version (:RII) applies number incrementing only to
 		those lines in the visual block that begin with zero or more
 		spaces and end with a number.
 
-	RAGGED RIGHT HANDLING FOR I AND II	*visincr-raggedright*
+	RAGGED RIGHT HANDLING FOR I AND II		*visincr-raggedright*
 		For :I and :II:
 
 		If the visual block is ragged on the right-hand side (as can
@@ -631,21 +748,41 @@ numbers, dates, or daynames.
 		calculations.
 
 	DATE INCREMENTING
-	:IYMD [#]    year/month/day	*IYMD*	*visincr-IYMD* *RIYMD*
-	:IMDY [#]    month/day/year	*IMDY*	*visincr-IMDY* *RIMDY*
-	:IDMY [#]    day/month/year	*IDMY*	*visincr-IDMY* *RIDMY*
+	:IYMD [# [zfill]]    year/month/day	*IYMD*	*visincr-IYMD*
+	:IMDY [# [zfill]]    month/day/year	*IMDY*	*visincr-IMDY*
+	:IDMY [# [zfill]]    day/month/year	*IDMY*	*visincr-IDMY*
 		Will use the starting line's date to construct an increasing
 		or decreasing list of dates, depending on the sign of the
 		number.
 
 		    Default increment: 1 (in days)
 
+			*visincr-RIYMD* *visincr-RIMDY* *visincr-RIDMY*
 		Restricted versions (:RIYMD, :RIMDY, :RIDMY) applies number
 		incrementing only to those lines in the visual block that
 		begin with a date (#/#/#).
 
+		zfill: since dates include both single and double digits,
+		to line up the single digits must be padded.  By default,
+		visincr will pad the single-digits in dates with zeros.
+		However, one may get blank padding by using a backslash
+		and then a space: >
+			:IYMD 1 \ 
+			         ^(space here)
+<		Of course, one may use any charcter for such padding.
 
-	SINGLE DIGIT DAYS OR MONTHS
+		By default, English daynames and monthnames are used.
+		However, one may use whatever daynames and monthnames
+		one wishes by placing lines such as >
+			let g:visincr_dow  = "Mandag,Tirsdag,Onsdag,Torsdag,Fredag,Lørdag,Søndag"
+			let g:visincr_month= "Janvier,Février,Mars,Avril,Mai,Juin,Juillet,Août,Septembre,Octobre,Novembre,Décembre"
+<		in your <.vimrc> initialization file.  The two variables
+		(dow=day-of-week) should be set to a comma-delimited set of
+		words.
+
+
+
+	SINGLE DIGIT DAYS OR MONTHS			*visincr-leaddate*
 
 		Single digit days or months are converted into two characters
 		by use of
@@ -659,31 +796,32 @@ numbers, dates, or daynames.
 		into your <.vimrc> file.
 
 
-	CALUTIL NEEDED FOR DATE INCREMENTING
+	CALUTIL NEEDED FOR DATE INCREMENTING		*visincr-calutil*
 		For :IYMD, :IMDY, and IDMY:
 
 		You'll need the <calutil.vim> plugin, available as
 		"Calendar Utilities" under the following url:
 
-		http://www.erols.com/astronaut/vim/index.html#VimFuncs
+		http://mysite.verizon.net/astronaut/vim/index.html#VimFuncs
 
 	ALPHABETIC INCREMENTING				*IA* *visincr-IA*
 	:IA	Will produce an increasing/decreasing list of alphabetic
 		characters.
 
-	DAYNAME INCREMENTING				*ID* *visincr-ID* *RID*
-	:ID [#]	Will produce an increasing/decreasing list of daynames.  Three-letter
-	        daynames will be used if the first day on the first line is a three
-		letter dayname; otherwise, full names will be used.
+	DAYNAME INCREMENTING			*ID* *visincr-ID* *visincr-RID*
+	:ID [#]	Will produce an increasing/decreasing list of daynames.
+		Three-letter daynames will be used if the first day on the
+		first line is a three letter dayname; otherwise, full names
+		will be used.
 
 		Restricted version (:RID) applies number incrementing only
 		to those lines in the visual block that begin with a dayname
 		(mon tue wed thu fri sat).
 
-	MONTHNAME INCREMENTING		*IM* *visincr-IM* *RIM*
-	:IM [#] will produce an increasing/decreasing list of monthnames.  Monthnames
-		may be three-letter versions (jan feb etc) or fully-spelled out
-		monthnames.
+	MONTHNAME INCREMENTING			*IM* *visincr-IM* *visincr-RIM*
+	:IM [#] will produce an increasing/decreasing list of monthnames.
+		Monthnames may be three-letter versions (jan feb etc) or
+		fully-spelled out monthnames.
 
 		Restricted version (:RIM) applies number incrementing only
 		to those lines in the visual block that begin with a
@@ -820,6 +958,14 @@ numbers, dates, or daynames.
 5. History:						*visincr-history*
 
 
+	v12: 04/20/05       : load-once variable changed to g:loaded_visincr
+	                      protected from users' cpo options
+	     05/06/05         zfill capability provided to IDMY IMDY IYMD
+	     05/09/05         g:visincr_dow and g:visincr_month now can be
+	                      set by the user to customize daynames and
+	                      monthnames.
+	     03/07/06         passes my pluginkiller test (avoids more
+	                      problems causes by various options to vim)
 	v11: 08/24/04       : g:visincr_leaddate implemented
 	v10: 07/26/04       : IM and ID now handle varying length long-names
 	                      selected via |linewise-visual| mode
