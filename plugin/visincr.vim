@@ -1,7 +1,7 @@
 " visincr.vim: Visual-block incremented lists
 "  Author:      Charles E. Campbell, Jr.  Ph.D.
-"  Date:        Mar 07, 2006
-"  Version:     12
+"  Date:        Mar 16, 2006
+"  Version:     13
 "
 "				Visincr assumes that a block of numbers selected by a
 "				ctrl-v (visual block) has been selected for incrementing.
@@ -26,7 +26,7 @@ if &cp || exists("g:loaded_visincr")
   finish
 endif
 let s:keepcpo        = &cpo
-let g:loaded_visincr = "v12"
+let g:loaded_visincr = "v13"
 set cpo&vim
 
 " ------------------------------------------------------------------------------
@@ -67,12 +67,13 @@ fun! <SID>VisBlockIncr(method,...)
   set fo=tcq magic report=9999
 
   " visblockincr only uses visual-block! {{{2
+"  call Decho("visualmode<".visualmode().">")
   if visualmode() != "\<c-v>"
    echoerr "Please use visual-block mode (ctrl-v)!"
    let &fo    = fokeep
    let &magic = magickeep
    let &report= reportkeep
-"  call Dret("VisBlockIncr")
+"   call Dret("VisBlockIncr")
    return
   endif
 
@@ -143,6 +144,9 @@ fun! <SID>VisBlockIncr(method,...)
 "   call Decho("set leaddate<".leaddate.">")
   elseif a:0 > 1 && method
    let zfill= a:2
+   if zfill == "''" || zfill == '""'
+   	let zfill=""
+   endif
 "   call Decho("set zfill<".zfill.">")
   else
    let zfill= ' '
@@ -212,16 +216,18 @@ fun! <SID>VisBlockIncr(method,...)
 
 	" generate incremented dayname list
     norm! `<
+	norm! gUl
+    norm! `<
     let l = y1
     while l < y2
    	 norm! j
-"	 call Decho("[l=".l."] still < [y2=".y2."] line=".line(".")." col[".leftcol.",".rghtcol."]")
+"	 call Decho("while [l=".l."] < [y2=".y2."]: line=".line(".")." col[".leftcol.",".rghtcol."] width=".width)
 	 if exists("restrict") && getline(".") !~ restrict
 	  let l= l + 1
 	  continue
 	 endif
 	 let idow= (idow + incr)%7
-	 exe 's/\%'.leftcol.'v.*\%(\%'.rghtcol.'v\|\>\)/'.dow_{idow}.'/e'
+	 exe 's/\%'.leftcol.'v.\{'.width.'\}/'.dow_{idow}.'/e'
 	 let l= l + 1
 	endw
 	" return from ID
@@ -275,6 +281,11 @@ fun! <SID>VisBlockIncr(method,...)
 	endwhile
 	if imon >= 12
 	 echoerr "***error*** misspelled month <".mon.">"
+     let &fo    = fokeep
+     let &magic = magickeep
+     let &report= reportkeep
+"     call Dret("VisBlockIncr")
+     return
 	endif
 
 	" if monthname is three or fewer characters long,
@@ -290,6 +301,8 @@ fun! <SID>VisBlockIncr(method,...)
 
 	" generate incremented monthname list
     norm! `<
+	norm! gUl
+    norm! `<
     let l = y1
     while l < y2
    	 norm! j
@@ -298,7 +311,7 @@ fun! <SID>VisBlockIncr(method,...)
 	  continue
 	 endif
 	 let imon= (imon + incr)%12
-	 exe 's/\%'.leftcol.'v.*\%(\%'.rghtcol.'v\|\>\)/'.mon_{imon}.'/e'
+	 exe 's/\%'.leftcol.'v.\{'.width.'\}/'.mon_{imon}.'/e'
 	 let l= l + 1
 	endw
 	" return from IM
@@ -608,7 +621,7 @@ finish
 " ---------------------------------------------------------------------
 " Put the help after the HelpExtractorDoc label...
 " HelpExtractorDoc:
-*visincr.txt*	The Visual Incrementing Tool		May 19, 2005
+*visincr.txt*	The Visual Incrementing Tool		Mar 16, 2006
 
 Author:  Charles E. Campbell, Jr.  <NdrchipO@ScampbellPfamily.AbizM>
 	  (remove NOSPAM from Campbell's email before using)
@@ -958,6 +971,13 @@ numbers, dates, or daynames.
 5. History:						*visincr-history*
 
 
+	v13: 03/15/06       : a zfill of '' or "" now stands for an empty zfill
+	     03/16/06       * visincr now insures that the first character of
+	                      a month or day incrementing sequence (:IM, :ID)
+			      is capitalized
+			    * (bugfix) names embedded in a line weren't being
+			      incremented correctly; text to the right of the
+			      daynames/monthnames went missing.  Fixed.
 	v12: 04/20/05       : load-once variable changed to g:loaded_visincr
 	                      protected from users' cpo options
 	     05/06/05         zfill capability provided to IDMY IMDY IYMD
