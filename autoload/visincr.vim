@@ -1,7 +1,7 @@
 " visincr.vim: Visual-block incremented lists
 "  Author:      Charles E. Campbell, Jr.  Ph.D.
-"  Date:        Jun 12, 2006
-"  Version:     14
+"  Date:        Jul 25, 2006
+"  Version:     16
 "
 "				Visincr assumes that a block of numbers selected by a
 "				ctrl-v (visual block) has been selected for incrementing.
@@ -26,7 +26,7 @@ if &cp || exists("g:loaded_visincr")
   finish
 endif
 let s:keepcpo        = &cpo
-let g:loaded_visincr = "v14"
+let g:loaded_visincr = "v16"
 set cpo&vim
 
 " ---------------------------------------------------------------------
@@ -43,33 +43,38 @@ let s:IX    =  8
 let s:IIX   =  9
 let s:IO    = 10
 let s:IIO   = 11
-let s:RI    = 12
-let s:RII   = 13
-let s:RIMDY = 14
-let s:RIYMD = 15
-let s:RIDMY = 16
-let s:RID   = 17
-let s:RIM   = 18
+let s:IR    = 12
+let s:IIR   = 13
+let s:RI    = 14
+let s:RII   = 15
+let s:RIMDY = 16
+let s:RIYMD = 17
+let s:RIDMY = 18
+let s:RID   = 19
+let s:RIM   = 20
 
 " ------------------------------------------------------------------------------
-" Options:
+" Options: {{{1
 if !exists("g:visincr_leaddate")
  " choose between dates such as 11/ 5/04 and 11/05/04
  let g:visincr_leaddate = '0'
 endif
 
+" ==============================================================================
+"  Functions: {{{1
+
 " ------------------------------------------------------------------------------
-" VisBlockIncr:	{{{1
+" VisBlockIncr:	{{{2
 fun! visincr#VisBlockIncr(method,...)
 "  call Dfunc("VisBlockIncr(method<".a:method.">) a:0=".a:0)
 
-  " avoid problems with user options
+  " avoid problems with user options {{{3
   let fokeep    = &fo
   let magickeep = &magic
   let reportkeep= &report
   set fo=tcq magic report=9999
 
-  " visblockincr only uses visual-block! {{{2
+  " visblockincr only uses visual-block! {{{3
 "  call Decho("visualmode<".visualmode().">")
   if visualmode() != "\<c-v>"
    echoerr "Please use visual-block mode (ctrl-v)!"
@@ -80,13 +85,13 @@ fun! visincr#VisBlockIncr(method,...)
    return
   endif
 
-  " save boundary line numbers and set up method {{{2
+  " save boundary line numbers and set up method {{{3
   let y1      = line("'<")
   let y2      = line("'>")
   let method  = (a:method >= s:RI)? a:method - s:RI : a:method
   let leaddate= g:visincr_leaddate
 
-  " get increment (default=1) {{{2
+  " get increment (default=1) {{{3
   if a:0 > 0
    let incr= a:1
    if a:method == s:IX || a:method == s:IIX
@@ -99,7 +104,7 @@ fun! visincr#VisBlockIncr(method,...)
   endif
 "  call Decho("incr=".incr)
 
-  " set up restriction pattern {{{2
+  " set up restriction pattern {{{3
   let leftcol = virtcol("'<")
   let rghtcol = virtcol("'>")
   if leftcol > rghtcol
@@ -152,7 +157,7 @@ fun! visincr#VisBlockIncr(method,...)
 "   call Decho(":IM restricted<".restrict.">")
   endif
 
-  " determine zfill {{{2
+  " determine zfill {{{3
 "  call Decho("a:0=".a:0." method=".method)
   if a:0 > 1 && ((s:IMDY <= method && method <= s:IDMY) || (s:RIMDY <= method && method <= s:RIDMY))
    let leaddate= a:2
@@ -169,7 +174,7 @@ fun! visincr#VisBlockIncr(method,...)
 "   call Decho("set default zfill<".zfill.">")
   endif
 
-  " IMDY  IYMD  IDMY  ID  IM IA: {{{2
+  " IMDY  IYMD  IDMY  ID  IM IA: {{{3
   if s:IMDY <= method && method <= s:IA
    let rghtcol = rghtcol + 1
    let curline = getline("'<")
@@ -453,43 +458,70 @@ fun! visincr#VisBlockIncr(method,...)
    return
   endif " IMDY  IYMD  IDMY  ID  IM
 
-  " I II IX IIX IO IIO: {{{2
-  " construct a line from the first line that {{{3
-  " only has the number in it
+  " I II IX IIX IO IIO IR IIR: {{{3
+  " construct a line from the first line that only has the number in it
   let rml   = rghtcol - leftcol
   let rmlp1 = rml  + 1
   let lm1   = leftcol  - 1
-"  call Decho("rghtcol=".rghtcol." leftcol=".leftcol." rmlp1=".rmlp1." lm1=".lm1)
+"  call Decho("rmlp1=[rghtcol=".rghtcol."]-[leftcol=".leftcol."]+1=".rmlp1)
+"  call Decho("lm1  =[leftcol=".leftcol."]-1=".lm1)
+
   if lm1 <= 0
+   " region beginning at far left
+"   call Decho("handle visblock at far left")
    let lm1 = 1
    let pat = '^\([0-9 \t]\{1,'.rmlp1.'}\).*$'
    if method == s:IX || method == s:IIX
     let pat = '^\([0-9a-fA-F \t]\{1,'.rmlp1.'}\).*$'
+   elseif method == s:IR || method == s:IIR
+    if getline(".") =~ '^\(.\{-}\)\%'.leftcol.'v\([0-9 \t]\{1,'.rmlp1.'}\).*$'
+	 " need to convert arabic notation to roman numeral
+     let pat = '^\([0-9IVXCLM) \t]\{1,'.rmlp1.'}\).*$'
+	else
+     let pat = '^\([IVXCLM) \t]\{1,'.rmlp1.'}\).*$'
+	endif
    else
     let pat = '^\([0-9 \t]\{1,'.rmlp1.'}\).*$'
    endif
    let cnt = substitute(getline("'<"),pat,'\1',"")
+
   else
+   " region not beginning at far left
+"   call Decho("handle visblock not at far left")
    if method == s:IX || method == s:IIX
     let pat = '^\(.\{-}\)\%'.leftcol.'v\([0-9a-fA-F \t]\{1,'.rmlp1.'}\).*$'
    elseif method == s:IO || method == s:IIO
     let pat = '^\(.\{-}\)\%'.leftcol.'v\([0-7 \t]\{1,'.rmlp1.'}\).*$'
+   elseif method == s:IR || method == s:IIR
+"    call Decho('test: ^\(.\{-}\)\%'.leftcol.'v\([0-9 \t]\{1,'.rmlp1.'}\).*$')
+    if getline(".") =~ '^\(.\{-}\)\%'.leftcol.'v\([0-9 \t]\{1,'.rmlp1.'}\).*$'
+	 " need to convert arabic notation to roman numeral
+     let pat = '^\(.\{-}\)\%'.leftcol.'v\([0-9IVXCLM \t]\{1,'.rmlp1.'}\).*$'
+	else
+     let pat = '^\(.\{-}\)\%'.leftcol.'v\([IVXCLM \t]\{1,'.rmlp1.'}\).*$'
+	endif
    else
     let pat = '^\(.\{-}\)\%'.leftcol.'v\([0-9 \t]\{1,'.rmlp1.'}\).*$'
    endif
+"   call Decho("pat<".pat.">")
    let cnt = substitute(getline("'<"),pat,'\2',"")
   endif
+
   let cntlen = strlen(cnt)
   let cnt    = substitute(cnt,'\s','',"ge")
   let ocnt   = cnt
+"  call Decho("cntlen=".cntlen." cnt=".cnt." ocnt=".ocnt." (before I*[XOR] subs)")
+
   if method == s:IX || method == s:IIX
    let cnt= substitute(cnt,'^0*\([1-9a-fA-F]\|0$\)','\1',"ge")
   elseif method == s:IO || method == s:IIO
    let cnt= substitute(cnt,'^0*\([1-7]\|0$\)','\1',"ge")
+  elseif method == s:IR || method == s:IIR
+   let cnt= substitute(cnt,'^\([IVXCLM]$\)','\1',"ge")
   else
    let cnt= substitute(cnt,'^0*\([1-9]\|0$\)','\1',"ge")
   endif
-"  call Decho("cnt=".cnt." pat<".pat.">")
+"  call Decho("cnt<".cnt."> pat<".pat.">")
 
   " left-method with zeros {{{3
   " IF  top number is zero-mode
@@ -505,14 +537,23 @@ fun! visincr#VisBlockIncr(method,...)
    let maxcnt= s:Dec2Hex(s:Hex2Dec(cnt) + incr*(y2 - y1))
   elseif method == s:IO || method == s:IIO
    let maxcnt= s:Dec2Oct(s:Oct2Dec(cnt) + incr*(y2 - y1))
+  elseif method == s:IR || method == s:IIR
+   if cnt =~ '^\d\+$'
+    let maxcnt= s:Dec2Rom(cnt + incr*(y2 - y1))
+   else
+    let maxcnt= s:Dec2Rom(s:Rom2Dec(cnt) + incr*(y2 - y1))
+   endif
   else
-   let maxcnt= cnt + incr*(y2 - y1)
+   let maxcnt= printf("%d",cnt + incr*(y2 - y1))
   endif
   let maxcntlen= strlen(maxcnt)
   if cntlen > maxcntlen
    let maxcntlen= cntlen
   endif
-"  call Decho("maxcntlen=".maxcntlen)
+  if method == s:IIR
+   let maxcntlen= maxcntlen + 2
+  endif
+"  call Decho("maxcnt=".maxcnt."  maxcntlen=".maxcntlen)
 
   " go through visual block incrementing numbers based {{{3
   " on first number (saved in cnt), taking care to
@@ -520,9 +561,11 @@ fun! visincr#VisBlockIncr(method,...)
   "   l == current line number, over range [y1,y2]
   norm! `<
   let l = y1
+  if (method == s:IR || method == s:IIR) && cnt =~ '^\d\+$'
+   let cnt= s:Dec2Rom(cnt)
+  endif
   while l <= y2
-"   call Decho("---------")
-"   call Decho("[l=".l."] still <= [y2=".y2."]: cnt=".cnt)
+"   call Decho("----- while [l=".l."] <= [y2=".y2."]: cnt=".cnt)
 	if exists("restrict") && getline(".") !~ restrict
 "	 call Decho("skipping <".getline(".")."> (restrict)")
 	 norm! j
@@ -559,21 +602,27 @@ fun! visincr#VisBlockIncr(method,...)
 
 	" back up to left-of-block (plus optional left-hand-side modeling) {{{3
 	norm! 0
-	if method == s:I || method == s:IO || method == s:IX
+	if method == s:I || method == s:IO || method == s:IX || method == s:IR
 	 let bkup= leftcol
+"	 call Decho("bkup= [leftcol=".leftcol."]  (due to method)")
 	elseif maxcntlen > 0
 	 let bkup= leftcol + maxcntlen - cntlen
+"	 call Decho("bkup= [leftcol=".leftcol."]+[maxcntlen=".maxcntlen."]-[cntlen=".cntlen."]=".bkup)
 	else
 	 let bkup= leftcol
+"	 call Decho("bkup= [leftcol=".leftcol."]  ([maxcntlen=".maxcntlen."]<=0)")
 	endif
-"	call Decho("bkup= [leftcol=".leftcol."]+[maxcntlen=".maxcntlen."]-[cntlen=".cntlen."]=".bkup)
 	if virtcol(".") != bkup
-	 exe 'norm! /\%'.bkup."v\<Esc>"
+	 if bkup == 0
+	  norm! 0
+	 else
+	  exe 'norm! /\%'.bkup."v\<Esc>"
+	 endif
 	endif
 
 	" replace with count {{{3
-"	call Decho("exe norm! R" . cnt . "\<Esc>")
-	exe "norm! R" . cnt . "\<Esc>"
+"    call Decho("exe norm! R" . cnt . "\<Esc>")
+    exe "norm! R" . cnt . "\<Esc>"
 	if cntlen > 1
 	 let cntlenm1= cntlen - 1
 	 exe "norm! " . cntlenm1 . "h"
@@ -593,13 +642,15 @@ fun! visincr#VisBlockIncr(method,...)
      let cnt= s:Dec2Hex(s:Hex2Dec(cnt) + incr)
 	elseif method == s:IO || method == s:IIO
      let cnt= s:Dec2Oct(s:Oct2Dec(cnt) + incr)
+	elseif method == s:IR || method == s:IIR
+     let cnt= s:Dec2Rom(s:Rom2Dec(cnt) + incr)
 	else
      let cnt= cnt + incr
 	endif
     let l  = l  + 1
   endw
-  " }}}2
 
+  " restore options: {{{3
   let &fo    = fokeep
   let &magic = magickeep
   let &report= reportkeep
@@ -610,7 +661,17 @@ endfun
 " Hex2Dec: convert hexadecimal to decimal {{{2
 fun! s:Hex2Dec(hex)
 "  call Dfunc("Hex2Dec(hex=".a:hex.")")
-  let n   = a:hex
+  let hex= substitute(string(a:hex),"'","","ge")
+"  call Decho("hex<".hex.">")
+  if hex =~ '^-'
+   let n   = strpart(hex,1)
+   let neg = 1
+  else
+   let n   = hex
+   let neg = 0
+  endif
+"  call Decho("n<".n."> neg=".neg)
+
   let b10 = 0
   while n != ""
    let hexdigit= strpart(n,0,1)
@@ -627,6 +688,10 @@ fun! s:Hex2Dec(hex)
    let b10= 16*b10 + hexdigit
    let n  = strpart(n,1)
   endwhile
+
+  if neg
+   let b10= -b10
+  endif
 "  call Dret("Hex2Dec ".b10)
   return b10
 endfun
@@ -635,15 +700,25 @@ endfun
 " Dec2Hex: convert decimal to hexadecimal {{{2
 fun! s:Dec2Hex(b10)
 "  call Dfunc("Dec2Hex(b10=".a:b10.")")
-  if v:version >= 700
-   let hex= printf("%x",a:b10)
-  else
+  if a:b10 >= 0
    let b10 = a:b10
+   let neg = 0
+  else
+   let b10 = -a:b10
+   let neg = 1
+  endif
+"  call Decho('b10<'.b10.'> neg='.neg)
+  if v:version >= 700
+   let hex= printf("%x",b10)
+  else
    let hex = ""
    while b10
     let hex = '0123456789abcdef'[b10 % 16] . hex
     let b10 = b10 / 16
    endwhile
+  endif
+  if neg
+   let hex= "-".hex
   endif
 "  call Dret("Dec2Hex ".hex)
   return hex
@@ -653,7 +728,14 @@ endfun
 " Oct2Dec: convert octal to decimal {{{2
 fun! s:Oct2Dec(oct)
 "  call Dfunc("Oct2Dec(oct=".a:oct.")")
-  let n   = a:oct
+  if a:oct >= 0
+   let n  = a:oct
+   let neg= 0
+  else
+   let n   = strpart(a:oct,1)
+   let neg = 1
+  endif
+
   let b10 = 0
   while n != ""
    let octdigit= strpart(n,0,1)
@@ -666,6 +748,10 @@ fun! s:Oct2Dec(oct)
    let b10= 8*b10 + octdigit
    let n  = strpart(n,1)
   endwhile
+
+  if neg
+   let b10= -b10
+  endif
 "  call Dret("Oct2Dec ".b10)
   return b10
 endfun
@@ -674,21 +760,86 @@ endfun
 " Dec2Oct: convert decimal to octal {{{2
 fun! s:Dec2Oct(b10)
 "  call Dfunc("Dec2Oct(b10=".a:b10.")")
-  if v:version >= 700
-   let oct= printf("%o",a:b10)
-  else
+  if a:b10 >= 0
    let b10 = a:b10
+   let neg = 0
+  else
+   let b10 = -a:b10
+   let neg = 1
+  endif
+
+  if v:version >= 700
+   let oct= printf("%o",b10)
+  else
    let oct = ""
    while b10
     let oct = '01234567'[b10 % 8] . oct
     let b10 = b10 / 8
    endwhile
   endif
+
+  if neg
+   let oct= "-".oct
+  endif
 "  call Dret("Dec2Oct ".oct)
   return oct
 endfun
 
 " ------------------------------------------------------------------------------
+"  Roman Numeral Support: {{{2
+let s:d2r= [ [ 1000000 , 'M)'   ],[900000 , 'CM)' ], [500000 , 'D)'  ], [400000 , 'CD)' ], [100000 , 'C)'  ], [90000 , 'XC)' ], [50000 , 'L)' ], [40000 , 'XL)' ], [10000 , 'X)' ], [9000  , 'IX)'], [5000 , 'V)'], [1000 , 'M'  ], [900  , 'CM'], [500 , 'D'], [400  , 'CD'], [100 , 'C'], [90   , 'XC'], [50  , 'L'], [40   , 'XL'], [10  , 'X'], [9    , 'IX'], [5   , 'V'], [4    , 'IV'], [1   , 'I'] ]
+
+" ---------------------------------------------------------------------
+"  Rom2Dec: convert roman numerals to a decimal number {{{2
+fun! s:Rom2Dec(roman)
+"  call Dfunc("Rom2Dec(".a:roman.")")
+  let roman = substitute(a:roman,'.','\U&','ge')
+  let dec   = 0
+
+  while roman != ''
+   for item in s:d2r
+   	let pat= '^'.item[1]
+	if roman =~ pat
+	 let dec= dec + item[0]
+	 if strlen(item[1]) > 1
+	  let roman= strpart(roman,strlen(item[1])-1)
+	 endif
+	 break
+	endif
+   endfor
+   let roman= strpart(roman,1)
+  endwhile
+
+"  call Dret("Rom2Dec ".dec)
+  return dec
+endfun
+
+" ---------------------------------------------------------------------
+"  Dec2Rom: convert a decimal number to roman numerals {{{2
+"  Note that since there is no zero or negative integers
+"  using Roman numerals, attempts to convert such will always
+"  result in "I".
+fun! s:Dec2Rom(dec)
+"  call Dfunc("Dec2Rom(".a:dec.")")
+  if a:dec > 0
+   let roman = ""
+   let dec   = a:dec
+   let i     = 0
+   while dec > 0
+   	while dec >= s:d2r[i][0]
+	 let dec   = dec - s:d2r[i][0]
+	 let roman = roman . s:d2r[i][1]
+	endwhile
+	let i= i + 1
+   endwhile
+  else
+   let roman= "I"
+  endif
+"  call Dret("Dec2Rom ".roman)
+  return roman
+endfun
+
+" ---------------------------------------------------------------------
 "  Restoration: {{{1
 let &cpo= s:keepcpo
 unlet s:keepcpo
