@@ -1,4 +1,4 @@
-*visincr.txt*	The Visual Incrementing Tool		Jul 25, 2006
+*visincr.txt*	The Visual Incrementing Tool		Sep 19, 2006
 
 Author:  Charles E. Campbell, Jr.  <NdrchipO@ScampbellPfamily.AbizM>
 	  (remove NOSPAM from Campbell's email before using)
@@ -33,7 +33,8 @@ Copyright: (c) 2004-2005 by Charles E. Campbell, Jr.	*visincr-copyright*
 	   :IDMY .......................: |ex-viscinr-IDMY|
 	   :IA .........................: |ex-viscinr-IA|
 	   :ID .........................: |ex-viscinr-ID|
-	5. History .....................: |visincr-history|
+	5. Options .....................: |visincr-options|
+	6. History .....................: |visincr-history|
 
 ==============================================================================
 2. Quick Usage				*visincr-usage*
@@ -224,6 +225,12 @@ numbers, dates, or daynames.
 <		in your <.vimrc> initialization file.  The two variables
 		(dow=day-of-week) should be set to a comma-delimited set of
 		words.
+							*g:visincr_datedivset*
+		By default, the date dividers are: given by: >
+			let g:visincr_datedivset= '[-./]'
+<		You may change the set in your <.vimrc>.  The separator actually
+		used is the first one found in your date column.
+
 
 	SINGLE DIGIT DAYS OR MONTHS			*visincr-leaddate*
 
@@ -392,8 +399,24 @@ numbers, dates, or daynames.
 
 
 ==============================================================================
-5. History:						*visincr-history* {{{1
+5. Options						*visincr-options*
 
+    Default values are shown: >
+
+	let g:visincr_dow  ="Monday,Tuesday,Wednesday,Thursday,Friday,Saturday,Sunday"
+	let g:visincr_month="January,February,March,April,May,June,July,August,September,October,November,December"
+	let g:visincr_datedivset= '[-./]'
+<
+    Controls respectively the day of week (ID), name of month (IM),
+    and dividers used by IMDY, IYMD, IDMY.
+
+
+==============================================================================
+6. History:						*visincr-history* {{{1
+
+	v17: 07/26/06       : -complete=expression added to all visincr
+	                      commands
+	     07/27/06       * g:visincr_datedivset support included
 	v16: 06/15/06       : :IX, :IIX, :IO, and :IIO now support negative
 	                      increments and negative counts
 	     07/13/06       * :IR :IIR (roman numeral) support included
