@@ -1,7 +1,7 @@
 " visincr.vim: Visual-block incremented lists
 "  Author:      Charles E. Campbell, Jr.  Ph.D.
 "  Date:        Dec 19, 2007
-"  Version:     18
+"  Version:     19
 "
 "				Visincr assumes that a block of numbers selected by a
 "				ctrl-v (visual block) has been selected for incrementing.
@@ -26,7 +26,7 @@ if &cp || exists("g:loaded_visincr")
   finish
 endif
 let s:keepcpo        = &cpo
-let g:loaded_visincr = "v18"
+let g:loaded_visincr = "v19"
 set cpo&vim
 
 " ---------------------------------------------------------------------

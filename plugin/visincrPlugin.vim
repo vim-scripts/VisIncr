@@ -13,7 +13,7 @@
 if &cp || exists("g:loaded_visincrPlugin")
   finish
 endif
-let g:loaded_visincrPlugin = "v18"
+let g:loaded_visincrPlugin = "v19"
 let s:keepcpo              = &cpo
 set cpo&vim
 
