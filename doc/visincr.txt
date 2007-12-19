@@ -1,8 +1,8 @@
-*visincr.txt*	The Visual Incrementing Tool		Sep 19, 2006
+*visincr.txt*	The Visual Incrementing Tool		Oct 17, 2007
 
 Author:  Charles E. Campbell, Jr.  <NdrchipO@ScampbellPfamily.AbizM>
 	  (remove NOSPAM from Campbell's email before using)
-Copyright: (c) 2004-2005 by Charles E. Campbell, Jr.	*visincr-copyright*
+Copyright: (c) 2004-2007 by Charles E. Campbell, Jr.	*visincr-copyright*
            The VIM LICENSE applies to visincr.vim and visincr.txt
            (see |copyright|) except use "visincr" instead of "Vim"
 	   No warranty, express or implied.  Use At-Your-Own-Risk.
@@ -25,6 +25,8 @@ Copyright: (c) 2004-2005 by Charles E. Campbell, Jr.	*visincr-copyright*
 	   :IA   [#] ...................: |visincr-IA|
 	   :ID   [#] ...................: |visincr-ID|
 	   :IM   [#] ...................: |visincr-IM|
+	   :IPOW [#] ...................: |visincr-IPOW|
+	   :IIPOW [#] ..................: |visincr-IIPOW|
 	4. Examples.....................: |visincr-examples|
 	   :I ..........................: |ex-viscinr-I|
 	   :II .........................: |ex-viscinr-II|
@@ -112,14 +114,21 @@ Copyright: (c) 2004-2005 by Charles E. Campbell, Jr.	*visincr-copyright*
 		     then only three-letter abbreviations will be used.
 		     For more: see |visincr-IM|
 
+		*:RI* :*RII* :*RIMDY* *:RIDMY* *:RID* *:RM* *visincr-restrict*
 		:RI RII RIYMD RIMDY RIDMY RID RM
 		     Restricted variants of the above commands - requires
 		     that the visual block on the current line start with
 		     an appropriate pattern (ie. a number for :I, a
 		     dayname for :ID, a monthname for :IM, etc).
-		     For more, see |visincr-RI|, |visincr-RII|, |visincr-RIYMD|,
-		     |visincr-RIMDY|, |visincr-RIDMY|, |visincr-RID|, and
-		     |visincr-M|.
+		     For more, see
+
+		     Restricted left-justified incrementing......|visincr-RI|
+		     Restricted right-justified incrementing.....|visincr-RII|
+		     Restricted year/month/day incrementing......|visincr-RIYMD|
+		     Restricted month/day/year incrementing......|visincr-RIMDY|
+		     Restricted day/month/year incrementing......|visincr-RIDMY|
+		     Restricted dayname incrementing.............|visincr-RID|
+		     Restricted monthname incrementing...........|visincr-M|
 
 
 ==============================================================================
@@ -129,7 +138,7 @@ Copyright: (c) 2004-2005 by Charles E. Campbell, Jr.	*visincr-copyright*
 The visincr plugin facilitates making a column of increasing or decreasing
 numbers, dates, or daynames.
 
-	LEFT JUSTIFIED INCREMENTING			*I*  *viscinr-I*
+	LEFT JUSTIFIED INCREMENTING			*:I*  *viscinr-I*
 	:I [#]  Will use the first line's number as a starting point to build
 	        a column of increasing numbers (or decreasing numbers if the
 		increment is negative).
@@ -139,21 +148,21 @@ numbers, dates, or daynames.
 
 		The IX variant supports hexadecimal incrementing.
 
-							*visincr-RI*
+								*visincr-RI*
 		The restricted version (:RI) applies number incrementing only
 		to those lines in the visual block that begin with a number.
 
 		See |visincr-raggedright| for a discussion on ragged-right
 		handling.
  							
-			*IX* *visincr-IX* *IO* *visincr-IO*
+			*:IX* *visincr-IX* *:IO* *visincr-IO*
 		The following two commands are variants of :I : >
 		    :IO [#] left justified octal incrementing
 		    :IX [#] left justified hexadecimal incrementing
 <		The increments are in octal or hexadecimal for their
 		respective commands.
 
-			*IR* *visincr-IR* *IIR* *visincr-IIR*
+			*:IR* *visincr-IR* *:IIR* *visincr-IIR*
 		These commands do left (IR) and right (IIR) justified
 		Roman numeral enumeration.  The increment for these
 		commands is in the usual arabic numerals (ie. decimal)
@@ -162,7 +171,7 @@ numbers, dates, or daynames.
 
 
 
-	RIGHT JUSTIFIED INCREMENTING			*II*  *visincr-II*
+	RIGHT JUSTIFIED INCREMENTING			*:II*  *visincr-II*
 	:II [# [zfill]]  Will use the first line's number as a starting point
 		to build a column of increasing numbers (or decreasing numbers
 		if the increment is negative).
@@ -172,14 +181,14 @@ numbers, dates, or daynames.
 		    Zfill            : left padding will be done with the given
 		                       character, typically a zero.
 
-		*IIX* *visincr-IIX* *IIO* *visincr-IIO*
+				*:IIX* *visincr-IIX* *:IIO* *visincr-IIO*
 		The following two commands are variants of :II :
 	:IIO [# [zfill]] right justified octal incrementing
 	:IIX [# [zfill]] right justified hexadecimal incrementing
 
-							*visincr-RII*
-		The restricted version (:RII) applies number incrementing only to
-		those lines in the visual block that begin with zero or more
+								*visincr-RII*
+		The restricted version (:RII) applies number incrementing only
+		to those lines in the visual block that begin with zero or more
 		spaces and end with a number.
 
 	RAGGED RIGHT HANDLING FOR I AND II		*visincr-raggedright*
@@ -227,10 +236,13 @@ numbers, dates, or daynames.
 		words.
 							*g:visincr_datedivset*
 		By default, the date dividers are: given by: >
-			let g:visincr_datedivset= '[-./]'
+			let g:visincr_datedivset= '[-./_:~,+*^]\='
 <		You may change the set in your <.vimrc>.  The separator actually
-		used is the first one found in your date column.
-
+		used is the first one found in your date column.  A date
+		divider is no longer strictly required (note that \= in the
+		date divider set).  For :IMDY and :IDMY and no date dividers,
+		the year may be 2 or 4 digits.  For :IYMD, the year must be
+		four digits if there are no date dividers.
 
 	SINGLE DIGIT DAYS OR MONTHS			*visincr-leaddate*
 
@@ -253,11 +265,11 @@ numbers, dates, or daynames.
 
 		http://mysite.verizon.net/astronaut/vim/index.html#VimFuncs
 
-	ALPHABETIC INCREMENTING				*IA* *visincr-IA*
+	ALPHABETIC INCREMENTING				*:IA* *visincr-IA*
 	:IA	Will produce an increasing/decreasing list of alphabetic
 		characters.
 
-	DAYNAME INCREMENTING			*ID* *visincr-ID* *visincr-RID*
+	DAYNAME INCREMENTING			*:ID* *visincr-ID* *visincr-RID*
 	:ID [#]	Will produce an increasing/decreasing list of daynames.
 		Three-letter daynames will be used if the first day on the
 		first line is a three letter dayname; otherwise, full names
@@ -267,7 +279,7 @@ numbers, dates, or daynames.
 		to those lines in the visual block that begin with a dayname
 		(mon tue wed thu fri sat).
 
-	MONTHNAME INCREMENTING			*IM* *visincr-IM* *visincr-RIM*
+	MONTHNAME INCREMENTING			*:IM* *visincr-IM* *visincr-RIM*
 	:IM [#] will produce an increasing/decreasing list of monthnames.
 		Monthnames may be three-letter versions (jan feb etc) or
 		fully-spelled out monthnames.
@@ -275,6 +287,16 @@ numbers, dates, or daynames.
 		Restricted version (:RIM) applies number incrementing only
 		to those lines in the visual block that begin with a
 		monthname (jan feb mar etc).
+
+	POWER INCREMENTING	*:IPOW*  *visincr-IPOW*  *visincr-IIPOW*
+				*:RIPOW* *visincr-RIPOW* *visincr-RIIPOW*
+	:IPOW [#] will produce an increasing/decreasing list of powers times
+		the starting point.  The multiplier(divisor)'s default value
+		is 2.
+
+		Restricted versions (:RIPOW and :RIIPOW) applies only
+		to those lines in the visual block that begin with
+		a number.
 
 
 ==============================================================================
@@ -414,6 +436,10 @@ numbers, dates, or daynames.
 ==============================================================================
 6. History:						*visincr-history* {{{1
 
+	v18: 02/13/07       : included IPOW and variants
+	     02/15/07       * date dividers are no longer required
+	     10/17/07       * calutil.vim and calutil.txt included, and they
+	                      use vim 7's autoload feature
 	v17: 07/26/06       : -complete=expression added to all visincr
 	                      commands
 	     07/27/06       * g:visincr_datedivset support included
