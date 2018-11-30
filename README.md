@@ -46,13 +46,13 @@ Second, choose what sort of incremented list you want:
 | Command                                                                                                                                                       | Description                                                                                                                                                                                                                                                                                                               |
 | -----------------------------------                                                                                                                           | ------------------------------------------------------------------                                                                                                                                                                                                                                                        |
 | :I [#]                                                                                                                                                        | Will use the first line's number as a starting point to build a column of increasing numbers (or decreasing numbers if the increasement is negative).<br>Default increment: 1<br>Justification: left (will pad on the right)                                                                                              |
-| :I [#]                                                                                                                                                        | Will use the first line's number as a starting point to build a column of increasing numbers (or decreasing numbers if the increment is negative).<br>Default increment: 1<br>Justification: left (will pad on the right)                                                                                                 |
-| :II [# [zfill]]                                                                                                                                               | Will use the first line's number as a starting point to build a column of increasing numbers (or decreasing numbers if the increment is negative).<br>Default increment: 1<br>Justification    : right (will pad on the left)<br>Zfill            : left padding will be done with the given character, typically a zero. |
+|:I [#]| Will use the first line's number as a starting point to build a column of increasing numbers (or decreasing numbers if the increment is negative).<br>Default increment: 1<br>Justification: left (will pad on the right)                                                                                                 |
+| :II [# [zfill]] | Will use the first line's number as a starting point to build a column of increasing numbers (or decreasing numbers if the increment is negative).<br>Default increment: 1<br>Justification    : right (will pad on the left)<br>Zfill            : left padding will be done with the given character, typically a zero. |
 | :IYMD [#] year/month/day<br>:IMDY [#] month/day/year<br>:IDMY [#] day/month/year| Will use the starting line's date to construct an increasing or decreasing list of dates, depending on the sign of the number. Default increment: 1 (in days)
 | :ID [#] | Will produce an increasing/decreasing list of daynames.  Three-letter daynames will be used if the first day on the first line is a three letter dayname; otherwise, full names will be used.|
 |:IO [#]<br>:IIO [#] [zfill] | Like :I and :II, except visincr creates octal numbers.|
-|    :IR [#]<br>:IIR [#] [zfill]| Like :I and :II, except visincr uses Roman numerals.  Negative and zero counts are not supported for Roman numerals.|
-|    :IX [#]<br>:IIX [#] [zfill]| Like :I and :II, except visincr creates hexadecimal numbers.|
+|:IR [#]<br>:IIR [#] [zfill]| Like :I and :II, except visincr uses Roman numerals.  Negative and zero counts are not supported for Roman numerals.|
+|:IX [#]<br>:IIX [#] [zfill]| Like :I and :II, except visincr creates hexadecimal numbers.|
 
 ###    EXTRA NOTES
 - For `:I :II :IO :IIO :IR :IIR` :
@@ -124,6 +124,7 @@ Following section provides some samples on each commands.
 
 
 `:IYMD`: Increase the Year by 1
+
 | Original | ctrl-V & `:IMDY` |
 |----------|------------------|
 | 03/06/10 | 03/06/10         |
