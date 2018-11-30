@@ -19,7 +19,7 @@ This plug-in required `isort`.
 Add the following in your `~/.vimrac` in the plug-in section
 
 
-if you are using **vim-plug** manager:
+if you are using **vim-plug** as vim plug-in manager:
 
 ```
 call plug#begin('~/.vim/plugged')
